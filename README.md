@@ -18,6 +18,37 @@ This system addresses three practical needs for data engineers:
 
 ---
 
+## Quick Start
+
+If you already have PostgreSQL 17 running and Python 3.9+ installed, run these five commands to go from zero to a working application:
+
+```bash
+# 1. Install dependencies
+pip install psycopg2-binary faker tqdm
+
+# 2. Create the database and schema
+psql -U your_username -c "CREATE DATABASE dsci551;"
+psql -U your_username -d dsci551 -f schema.sql
+
+# 3. Generate synthetic data and load into PostgreSQL
+#    (generates 100 pipelines, 200 lineage edges, 1M execution records)
+python gen_syn_data.py
+
+# 4. Update statistics so indexes work correctly
+psql -U your_username -d dsci551 -c "VACUUM ANALYZE pipeline_executions;"
+
+# 5. Run the application
+python main.py overview --days 30
+python main.py inspect --pipeline-id 78 --days 30
+python main.py lineage --pipeline-id 78
+```
+
+> Update `your_username` in step 2 and in `DB_CONFIG` inside `main.py` and `gen_syn_data.py` to match your local PostgreSQL username.
+
+For full setup instructions see the sections below.
+
+---
+
 ## Requirements
 
 - Python 3.9+
@@ -36,6 +67,12 @@ macOS:
 ```bash
 brew install postgresql@17
 brew services start postgresql@17
+```
+
+Ubuntu:
+```bash
+sudo apt install postgresql-17
+sudo service postgresql start
 ```
 
 ### 2. Create the database
@@ -108,6 +145,20 @@ This script will:
 - Insert 200 lineage edges (DAG structure — no cycles)
 - Generate and insert 1,000,000 execution records sorted by `started_at` (required for BRIN to work correctly)
 - Run `ANALYZE` automatically at the end
+
+Expected output:
+```
+🔗 Connected to PostgreSQL
+[1/3] Inserting 100 pipelines...       ✅ 100 pipelines inserted
+[2/3] Inserting 200 lineage edges...   ✅ 200 lineage edges inserted
+[3/3] Inserting 1,000,000 execution records...
+    Generating rows in memory...
+    Sorting by started_at for BRIN compatibility...
+100%|████████████████| 1.00M/1.00M [02:00<00:00, ...]
+    ✅ 1,000,000 execution records inserted
+```
+
+> **Note:** The script holds 1M rows in memory during sorting (~400 MB). Ensure your machine has at least 2 GB of available RAM before running.
 
 ---
 
@@ -195,5 +246,5 @@ pipeline-monitor/
 ├── schema.sql           # Database schema and index creation
 ├── README.md            # This file
 └── Yuhuan_Yu_Final_Report.pdf
-```# pipeline-monitor
-# pipeline-monitor
+```
+
